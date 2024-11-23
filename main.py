@@ -8,8 +8,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from decouple import config
 from sqlalchemy.orm import Session
-from database import get_db
-from models import User
+from database import get_db, User
 
 # Configuration
 SECRET_KEY = config("SECRET_KEY", default="your_secret_key")
