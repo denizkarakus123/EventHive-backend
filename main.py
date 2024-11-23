@@ -265,3 +265,42 @@ async def cancel_rsvp(event_id: int, current_user: User = Depends(get_current_us
 async def get_rsvp_events(current_user: User = Depends(get_current_user)):
     # Retrieve all RSVPed events for the user
     return current_user.rsvp
+
+# List all events grouped by year, month, and day
+@app.get("/rsvpgrouped/", response_model=GroupedEventsResponse)
+async def get_rsvp_grouped(current_user: User = Depends(get_current_user)):
+    # Get all events, sorted by start_date (ascending)
+    events = list(current_user.rsvp)
+
+    # If no events are found, return an empty response
+    if not events:
+        return GroupedEventsResponse(events_by_year={})
+
+    # Initialize a nested defaultdict to group events by year, month, and day
+    grouped_events = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+    # Group events by year, month, and day
+    for event in events:
+        event_date = event.start_date
+        year = event_date.year
+        month = event_date.month
+        day = event_date.day
+
+        # Append the event to the appropriate group in the nested defaultdict
+        grouped_events[year][month][day].append(event)
+
+    # Convert the grouped data into the desired format
+    # We need to convert the defaultdict to a regular dict for Pydantic validation
+    
+    grouped_event_dict = {
+        year: {
+            month: {
+                day: [event for event in events_in_day]
+                for day, events_in_day in months.items()
+            }
+            for month, months in months_and_years.items()
+        }
+        for year, months_and_years in grouped_events.items()
+    }
+    
+    return GroupedEventsResponse(events_by_year=grouped_event_dict)
