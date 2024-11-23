@@ -21,7 +21,7 @@ class UserResponse(UserBase):
     rsvp: List[int]  # List of event IDs
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Shared base schema
@@ -64,12 +64,19 @@ class EventRead(EventBase):
     people: List[int]  # List of user IDs attending the event
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Schema for reading an organization (e.g., response)
 class OrganizationRead(OrganizationBase):
     id: int
     events: List[EventRead]  # List of event IDs
+
+    class Config:
+        from_attributes = True
+        
+
+class GroupedEventsResponse(BaseModel):
+    events_by_year: dict[int, dict[int, dict[int, List[EventRead]]]]
 
     class Config:
         orm_mode = True
