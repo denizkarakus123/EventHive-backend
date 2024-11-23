@@ -1,12 +1,8 @@
 import openai
 import pandas as pd
 import json
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = "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"
 
 def extract_event_data(caption, image_description):
     # Use OpenAI's GPT API to extract event information from Instagram post data

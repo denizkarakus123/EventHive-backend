@@ -1,17 +1,42 @@
 [
     {
         "IsAnEvent": "Yes",
+        "IsInPerson": "Yes",
+        "Location": "WONG 1050",
+        "Host": "McGill University club",
+        "IsFullday": "No",
+        "Day": "Wednesday November 27th",
+        "Start time": "18:00",
+        "End time": "20:00",
+        "Event description": "A special workshop that combines signal processing, programming, and software courses to create interesting and spatialized sounds. Learn about Open Sound Control, SuperCollider, creating sounds from sinusoids and signal noises, and building a game with spatialized audio effects.",
+        "Event name": "EXCLUSIVE MUSICAL TECHNOLOGY WORKSHOP",
+        "Event Category": "Technology and Innovation"
+    },
+    {
+        "IsAnEvent": "Yes",
         "IsInPerson": "No",
-        "Location": "N/A",
         "Link": "Form link in bio",
         "Host": "McGill University club",
         "IsFullday": "No",
-        "Day": "November 16th",
-        "Start time": "N/A",
-        "End time": "11:59pm",
-        "Event description": "Applications for E-Week Captain for ECSE",
+        "Day": "Saturday",
+        "Start time": "00:00",
+        "End time": "23:59",
+        "Event description": "Calling for E-Week Captains for ECSE",
         "Event name": "E-Week Captain Application",
         "Event Category": "Social"
+    },
+    {
+        "IsAnEvent": "Yes",
+        "IsInPerson": "Yes",
+        "Location": "MD267",
+        "Host": "McGill University club",
+        "IsFullday": "No",
+        "Day": "November 11th",
+        "Start time": "14:00",
+        "End time": "15:00",
+        "Event description": "Academic Forum for ECSE students to voice concerns about courses and professors",
+        "Event name": "Academic Forum",
+        "Event Category": "Educational"
     },
     {
         "IsAnEvent": "Yes",
@@ -22,9 +47,9 @@
         "Day": "TBD",
         "Start time": "TBD",
         "End time": "TBD",
-        "Event description": "An event organized by a McGill University club called Mark ZuckerBlues.",
+        "Event description": "A virtual event featuring discussions on the intersection of technology and music, inspired by Mark Zuckerberg's love for blues music.",
         "Event name": "Mark ZuckerBlues",
-        "Event Category": "Arts and Culture"
+        "Event Category": "Technology and Innovation"
     },
     {
         "IsAnEvent": "Yes",
@@ -34,22 +59,35 @@
         "IsFullday": "No",
         "Day": "Saturday, November 9",
         "Start time": "17:00",
-        "End time": "Unknown",
-        "Event description": "Time-travel themed event where participants will sip through the best decades, experiencing different vibes from the 60s to the 00s.",
-        "Event name": "Sip Through the Ages!",
+        "End time": "TBD",
+        "Event description": "Get ready to time-travel through the best decades, one sip at a time! From the 60s groove to the 00s jams, each stop brings a new era and a new vibe! Teams of up to 10 participants can join the crawl that begins at 5 PM. Tickets are available for $15 for drinking and $8 for non-drinking, with some food included. Register your team or sign up as a free agent to secure your spot and get ready to enjoy the event!",
+        "Event name": "Sip Through the Ages",
         "Event Category": "Social"
     },
     {
         "IsAnEvent": "Yes",
         "IsInPerson": "Yes",
         "Location": "Trottier first floor (By the ECSESS Lounge)",
-        "Host": "ECSESS (Electrical, Computer, and Software Engineering Student Society)",
+        "Host": "McGill University ECSESS Club",
         "IsFullday": "No",
         "Day": "Wednesday, November 6th",
         "StartTime": "09:00",
         "EndTime": "12:00",
-        "EventDescription": "Enjoy spooky season ECSESS pancakes with various toppings and drinks. BYOPlate or +50c per plate. Don't miss out on the Halloween spirit!",
-        "EventName": "ECSESS Spooky Season Pancake Event",
+        "EventDescription": "Enjoy spooky season pancakes organized by the ECSESS Club at McGill University. Bring your own plate or pay an additional 50 cents per plate. Menu includes spooky pancakes, toppings, fruit, and complimentary coffee and tea (bring your own mug).",
+        "EventName": "ECSESS Spooky Season Pancakes Event",
         "EventCategory": "Social"
+    },
+    {
+        "IsAnEvent": "Yes",
+        "IsInPerson": "Yes",
+        "Location": "EUS Common Room",
+        "Host": "McGill University club",
+        "IsFullday": "No",
+        "Day": "November 8th",
+        "Start time": "16:00",
+        "End time": "21:00",
+        "Event description": "Join us for MARK ZUCKERBLUES event, bringing Silicon Valley vibes to McGill's McConnell Engineering Building. A tech-bro meets after-hours gathering for students to unwind and have fun.",
+        "Event name": "MARK ZUCKERBLUES",
+        "Event Category": "Social"
     }
 ]
