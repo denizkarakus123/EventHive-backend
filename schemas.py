@@ -80,3 +80,11 @@ class GroupedEventsResponse(BaseModel):
 
     class Config:
         orm_mode = True
+        
+class RSVPResponse(BaseModel):
+    user_id: int
+    event_id: int
+    status: str  # The status can be "RSVP added" or "RSVP removed"
+
+    class Config:
+        orm_mode = True
