@@ -80,6 +80,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 
 class UserUpdate(BaseModel):
     username: Optional[str]
+    name: Optional[str]
+    faculty: Optional[str]
+    ispublic: Optional[bool]
+    event: Optional[str]
+    year: Optional[int]
+
 
 class Token(BaseModel):
     access_token: str
@@ -114,15 +120,57 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 @app.get("/profile")
 async def profile(current_user: User = Depends(get_current_user)):
-    return {"id": current_user.id, "username": current_user.username}
+    return {"id": current_user.id, "username": current_user.username, "name": current_user.name, "faculty": current_user.faculty, "year": current_user.year, "ispublic": current_user.ispublic, "event": current_user.event, "event_attendance": current_user.rsvp}
+
+@app.get("/users/{user_id}")
+async def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "id": user.id,
+        "username": user.username,
+        "name": user.name,  # Include other user details if applicable
+        "faculty": user.faculty,  # Assuming these fields exist
+        "year": user.year,
+        "ispublic": user.ispublic,
+        "event": user.event,
+        "event_attendance": user.rsvp
+    }
+
 
 
 @app.put("/update-profile")
-async def update_profile(update: UserUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def update_profile(
+    update: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),):
+    # Update the fields if they are provided
     if update.username:
+        # Check if the new username already exists
+        existing_user = db.query(User).filter(User.username == update.username).first()
+        if existing_user and existing_user.id != current_user.id:
+            raise HTTPException(status_code=400, detail="Username already exists")
         current_user.username = update.username
-        db.commit()
-        db.refresh(current_user)
+    
+    if update.name:
+        current_user.name = update.name
+    
+    if update.faculty:
+        current_user.faculty = update.faculty
+    
+    if update.ispublic is not None:  # Check for None to allow setting False
+        current_user.ispublic = update.ispublic
+
+    if update.event:
+        current_user.event = update.event
+    
+    if update.year:
+        current_user.year = update.year
+
+    db.commit()
+    db.refresh(current_user)
+
     return {"message": "Profile updated successfully"}
 
 # Create a new event
