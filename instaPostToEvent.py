@@ -1,12 +1,11 @@
 import openai
-import pandas as pd
 import json
 from sqlalchemy.orm import Session
 from database import SessionLocal, Event
 from dateutil.parser import parse as parse_date
 from datetime import datetime
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 def extract_event_data(caption, image_description):
     # Use OpenAI's GPT API to extract event information from Instagram post data
@@ -25,9 +24,9 @@ def extract_event_data(caption, image_description):
     - IsFullday (Yes/No)
     - Day
     - Start time, End time (in 24-hour format, e.g., 14:00, 16:00)
-    - Event description
     - Event name
-    - Event Category (one of these 6: Sports, Arts and Culture, Educational, Social, Charity and Fundraising, Technology and Innovation)
+    - Event description
+    - Event Category (one of these 5: Social, Academic, Sports, Club, Professional)
 
     Ensure the response is a valid JSON object with no additional comments, formatting, or code block syntax.
     """
@@ -48,8 +47,8 @@ def extract_event_data(caption, image_description):
         result = response["choices"][0]["message"]["content"].strip()
 
         # Ensure the response is properly formatted as JSON
-        if result.startswith("```json"):
-            result = result.lstrip("```json").rstrip("```").strip()
+        if result.startswith("json"):
+            result = result.lstrip("json").rstrip("").strip()
 
         return json.loads(result)
 
@@ -60,25 +59,6 @@ def extract_event_data(caption, image_description):
     except Exception as e:
         print(f"Error with OpenAI API: {e}")
         return None
-
-# Load CSV data
-csv_file_path = "test_post_data/mcgill_ecsess_posts.csv"  # Replace with your CSV file path
-data = pd.read_csv(csv_file_path)
-
-# Extract event data from each row and store results
-events = []
-for index, row in data.iterrows():
-    caption = row['description']
-    image_description = ""  # Assuming image description is not provided in the CSV
-    event_data = extract_event_data(caption, image_description)
-    if event_data:
-        events.append(event_data)
-
-# Save extracted event data to a new JSON file
-with open('extracted_events.json', 'w') as json_file:
-    json.dump(events, json_file, indent=4)
-
-print("Event data extraction completed and saved to 'extracted_events.json'")
 
 def save_event_to_db(event_details):
     """
@@ -110,7 +90,7 @@ def save_event_to_db(event_details):
             # For full-day events
             start_datetime = parsed_date
             end_datetime = parsed_date
-        elif not start_time or not end_time or "late" in (start_time.lower(), end_time.lower(), "tbd" in (start_time.lower(), end_time.lower())):
+        elif not start_time or not end_time or "late" in (start_time.lower(), end_time.lower()) or "tbd" in (start_time.lower(), end_time.lower()):
             # For events without specific start/end times or vague times (e.g., 'late', 'TBD')
             start_datetime = parsed_date
             end_datetime = parsed_date
@@ -125,8 +105,10 @@ def save_event_to_db(event_details):
                 )
             except Exception as e:
                 print(f"Error parsing time: {start_time} or {end_time} - {e}")
-                return
-
+                # Default to full day if time cannot be parsed
+                start_datetime = parsed_date
+                end_datetime = parsed_date
+        
         # Check for duplicate events
         existing_event = (
             db.query(Event)
@@ -147,8 +129,8 @@ def save_event_to_db(event_details):
             location=event_details.get("Location"),
             start_date=start_datetime,
             end_date=end_datetime,
-            description=event_details.get("Event description"),
-        )
+            #description=event_details.get("Event description"),
+            category=event_details.get("Event Category"),        )
         # Add and commit the new event
         db.add(new_event)
         db.commit()
@@ -159,14 +141,15 @@ def save_event_to_db(event_details):
     finally:
         db.close()  # Close the database session
 
-# Load CSV data
-csv_file_path = "test_post_data/mcgill_ecsess_posts.csv"  # Replace with your CSV file path
-data = pd.read_csv(csv_file_path)
+# Load JSON data
+json_file_path = "test_post_data/mcgill_ecsess_posts.json"  # Replace with your JSON file path
+with open(json_file_path, 'r') as json_file:
+    data = json.load(json_file)
 
-# Extract event data from each row and store results
-for index, row in data.iterrows():
-    caption = row['description']
-    image_description = ""  # Assuming image description is not provided in the CSV
+# Extract event data from each item in JSON and store results
+for item in data:
+    caption = item['description']
+    image_description = item.get('image_description', "")  # Assuming image description may or may not be provided
     event_data = extract_event_data(caption, image_description)
     if event_data:
         save_event_to_db(event_data)
