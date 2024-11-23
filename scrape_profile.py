@@ -114,7 +114,7 @@ def scrape_ig_profile(username: str, sf_api_key: str, start_date: str) -> List[D
     }
 
     def request_json(url, params) -> Dict[str, Any]:
-        response = requests.get(url, params=params, timeout=30)
+        response = requests.get(url, params=params, timeout=60)
         response.raise_for_status()
         return response.json()
 
