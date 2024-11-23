@@ -8,8 +8,10 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from decouple import config
 from sqlalchemy.orm import Session
-from database import get_db
-from models import User
+from database import get_db, User
+from schemas import UserCreate, OrganizationCreate, OrganizationRead, EventCreate, EventRead, GroupedEventsResponse
+from database import Event, Organization
+from collections import defaultdict
 
 # Configuration
 SECRET_KEY = config("SECRET_KEY", default="your_secret_key")
@@ -75,9 +77,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise HTTPException(status_code=401, detail="Invalid token")
 
 # Models
-class UserRegister(BaseModel):
-    username: str
-    password: str
 
 class UserUpdate(BaseModel):
     username: Optional[str]
@@ -88,7 +87,7 @@ class Token(BaseModel):
 
 # Routes
 @app.post("/register", status_code=201)
-async def register(user: UserRegister, db: Session = Depends(get_db)):
+async def register(user: UserCreate, db: Session = Depends(get_db)):
     # Check if username already exists
     existing_user = db.query(User).filter(User.username == user.username).first()
     if existing_user:
@@ -125,3 +124,93 @@ async def update_profile(update: UserUpdate, current_user: User = Depends(get_cu
         db.commit()
         db.refresh(current_user)
     return {"message": "Profile updated successfully"}
+
+# Create a new event
+@app.post("/events/", response_model=EventRead)
+def create_event(event: EventCreate, db: Session = Depends(get_db)):
+    host = db.query(Organization).filter(Organization.id == event.host_id).first()
+    if not host:
+        raise HTTPException(status_code=404, detail="Host organization not found")
+    new_event = Event(**event.dict())
+    db.add(new_event)
+    db.commit()
+    db.refresh(new_event)
+    return new_event
+
+# Retrieve an event by ID
+@app.get("/events/{event_id}", response_model=EventRead)
+def get_event(event_id: int, db: Session = Depends(get_db)):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
+
+# List all events
+@app.get("/events/", response_model=list[EventRead])
+def list_events(db: Session = Depends(get_db)):
+    return db.query(Event).all()
+
+# List all events grouped by year, month, and day
+@app.get("/groupedevents/", response_model=GroupedEventsResponse)
+def list_events(db: Session = Depends(get_db)):
+    # Get all events, sorted by start_date (ascending)
+    events = db.query(Event).order_by(Event.start_date.asc()).all()
+
+    # If no events are found, return an empty response
+    if not events:
+        return GroupedEventsResponse(events_by_year={})
+
+    # Initialize a nested defaultdict to group events by year, month, and day
+    grouped_events = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+    # Group events by year, month, and day
+    for event in events:
+        event_date = event.start_date
+        year = event_date.year
+        month = event_date.month
+        day = event_date.day
+
+        # Append the event to the appropriate group in the nested defaultdict
+        grouped_events[year][month][day].append(event)
+
+    # Convert the grouped data into the desired format
+    # We need to convert the defaultdict to a regular dict for Pydantic validation
+    grouped_event_dict = {
+        year: {
+            month: {
+                day: [EventRead.from_orm(event) for event in events_in_day]
+                for day, events_in_day in months.items()
+            }
+            for month, months in months_and_years.items()
+        }
+        for year, months_and_years in grouped_events.items()
+    }
+
+    # Return the grouped events as a response
+    return GroupedEventsResponse(events_by_year=grouped_event_dict)
+
+# Create a new organization
+@app.post("/organizations/", response_model=OrganizationRead)
+def create_organization(org: OrganizationCreate, db: Session = Depends(get_db)):
+    db_org = db.query(Organization).filter(Organization.name == org.name).first()
+    if db_org:
+        raise HTTPException(status_code=400, detail="Organization name already registered")
+    new_org = Organization(**org.dict())
+    db.add(new_org)
+    db.commit()
+    db.refresh(new_org)
+    return new_org
+
+# Retrieve an organization by ID
+@app.get("/organizations/{org_id}", response_model=OrganizationRead)
+def get_organization(org_id: int, db: Session = Depends(get_db)):
+    organization = db.query(Organization).filter(Organization.id == org_id).first()
+    if not organization:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return organization
+
+# List all organizations
+@app.get("/organizations/", response_model=list[OrganizationRead])
+def list_organizations(db: Session = Depends(get_db)):
+    return db.query(Organization).all()
+
