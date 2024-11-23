@@ -18,7 +18,7 @@ class UserCreate(UserBase):
 # Schema for reading a user (e.g., response)
 class UserResponse(UserBase):
     id: int
-    rsvp: List[int]  # List of event IDs
+    rsvp: List['EventRead']  # List of event IDs
 
     class Config:
         from_attributes = True
@@ -61,7 +61,7 @@ class EventCreate(EventBase):
 class EventRead(EventBase):
     id: int
     host_id: int
-    people: List[int]  # List of user IDs attending the event
+    attendees: List[int]  # List of user IDs attending the event
 
     class Config:
         from_attributes = True

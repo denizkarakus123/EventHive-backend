@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from decouple import config
+from sqlalchemy.orm import Mapped
 
 # Database configuration
 DATABASE_URL = config("DATABASE_URL")
@@ -9,6 +10,12 @@ DATABASE_URL = config("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+people_event = Table('people_event',
+                    Base.metadata,
+                    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
+                    Column('event_id', Integer, ForeignKey('events.id'), primary_key=True)
+                    )
 
 class User(Base):
     __tablename__ = "users"
@@ -25,8 +32,9 @@ class User(Base):
     ispublic = Column(Boolean, unique=False, index=False, nullable=True)
     event = Column(String, unique=False, index=False, nullable=True)
 
-    rsvp = relationship('Event', secondary='people_event', backref='people')
-
+    events: Mapped[list["Event"]] = relationship(
+        secondary=people_event, back_populates="attendees"
+    )
 
 class Organization(Base):
     __tablename__ = "organizations"
@@ -67,13 +75,10 @@ class Event(Base):
     food = Column(Boolean, nullable=True)
     location = Column(String, nullable=True)
     link = Column(String, nullable=True)
-
-
-people_event = Table('people_event',
-                    Base.metadata,
-                    Column('user_id', Integer, ForeignKey('users.id')),
-                    Column('event_id', Integer, ForeignKey('events.id'))
-                    )
+    
+    attendees: Mapped[list[User]] = relationship(
+        secondary=people_event, back_populates="events"
+    )
 
 Base.metadata.create_all(engine)
 
