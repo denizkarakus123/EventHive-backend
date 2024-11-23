@@ -40,14 +40,6 @@ class OrganizationBase(BaseModel):
 class OrganizationCreate(OrganizationBase):
     pass
 
-# Schema for reading an organization (e.g., response)
-class OrganizationRead(OrganizationBase):
-    id: int
-    events: List[int]  # List of event IDs
-
-    class Config:
-        orm_mode = True
-
 
 # Shared base schema
 class EventBase(BaseModel):
@@ -70,6 +62,14 @@ class EventRead(EventBase):
     id: int
     host_id: int
     people: List[int]  # List of user IDs attending the event
+
+    class Config:
+        orm_mode = True
+
+# Schema for reading an organization (e.g., response)
+class OrganizationRead(OrganizationBase):
+    id: int
+    events: List[EventRead]  # List of event IDs
 
     class Config:
         orm_mode = True
