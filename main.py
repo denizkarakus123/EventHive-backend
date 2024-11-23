@@ -148,7 +148,7 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
 # List all events
 @app.get("/events/", response_model=list[EventRead])
 def list_events(db: Session = Depends(get_db)):
-    return db.query(Event).all()
+    return(db.query(Event).all())
 
 # List all events grouped by year, month, and day
 @app.get("/groupedevents/", response_model=GroupedEventsResponse)
@@ -175,10 +175,11 @@ def list_events(db: Session = Depends(get_db)):
 
     # Convert the grouped data into the desired format
     # We need to convert the defaultdict to a regular dict for Pydantic validation
+    
     grouped_event_dict = {
         year: {
             month: {
-                day: [EventRead.from_orm(event) for event in events_in_day]
+                day: [event for event in events_in_day]
                 for day, events_in_day in months.items()
             }
             for month, months in months_and_years.items()

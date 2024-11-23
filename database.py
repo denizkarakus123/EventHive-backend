@@ -25,7 +25,7 @@ class User(Base):
     ispublic = Column(Boolean, unique=False, index=False, nullable=True)
     event = Column(String, unique=False, index=False, nullable=True)
 
-    rsvp = relationship('Event', secondary='people_event', backref='people')
+    rsvp = relationship('Event', secondary='people_event', backref='attendees')
 
 
 class Organization(Base):
