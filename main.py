@@ -215,3 +215,53 @@ def get_organization(org_id: int, db: Session = Depends(get_db)):
 def list_organizations(db: Session = Depends(get_db)):
     return db.query(Organization).all()
 
+#RSVP to an event
+@app.post("/rsvp/{event_id}", )
+async def rsvp_event(event_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Check if the event exists
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Check if the user has already RSVPed to the event
+    if event in current_user.rsvp:
+        raise HTTPException(status_code=400, detail="You have already RSVPed to this event")
+
+    # Add RSVP (associate user with the event)
+    current_user.rsvp.append(event)
+    db.commit()
+
+    return {
+        "message": "RSVP successful",
+        "event_id": event.id,
+        "user_id": current_user.id
+    }
+
+
+# Cancel RSVP to an event
+@app.delete("/rsvp/{event_id}")
+async def cancel_rsvp(event_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Check if the event exists
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Check if the user has RSVPed to the event
+    if event not in current_user.rsvp:
+        raise HTTPException(status_code=400, detail="You have not RSVPed to this event")
+
+    # Remove RSVP (disassociate user from the event)
+    current_user.rsvp.remove(event)
+    db.commit()
+
+    return {
+        "message": "RSVP canceled",
+        "event_id": event.id,
+        "user_id": current_user.id
+    }
+
+# Retrieve all events RSVPed by the current user
+@app.get("/rsvp/", response_model=list[EventRead])
+async def get_rsvp_events(current_user: User = Depends(get_current_user)):
+    # Retrieve all RSVPed events for the user
+    return current_user.rsvp
