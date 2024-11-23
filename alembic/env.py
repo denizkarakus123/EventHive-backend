@@ -5,7 +5,7 @@ from sqlalchemy import pool
 from alembic import context
 
 # Import your models and database base class
-from your_project.database import Base  # Replace 'your_project' with your actual project module name
+from database import Base  # Replace 'your_project' with your actual project module name
 from decouple import config  # To load database URL from .env
 
 # Load the database URL from .env
@@ -20,7 +20,7 @@ if config.config_file_name is not None:
 
 # Add your model's MetaData object here for 'autogenerate' support
 # Example: from models import User
-from your_project.models import User  # Import all models that need migrations
+from models import User  # Import all models that need migrations
 target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
