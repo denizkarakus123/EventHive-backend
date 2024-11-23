@@ -60,6 +60,10 @@ class EventBase(BaseModel):
 class EventCreate(EventBase):
     host_id: int  # ID of the hosting organization
 
+class EventNoAttendee(EventBase):
+    id: int
+    host_id: int
+
 # Schema for reading an event (e.g., response)
 class EventRead(EventBase):
     id: int
@@ -72,14 +76,14 @@ class EventRead(EventBase):
 # Schema for reading an organization (e.g., response)
 class OrganizationRead(OrganizationBase):
     id: int
-    events: List[EventBase]  # List of event IDs
+    events: List[EventNoAttendee]  # List of event IDs
 
     class Config:
         from_attributes = True
         
 
 class GroupedEventsResponse(BaseModel):
-    events_by_year: dict[int, dict[int, dict[int, List[EventBase]]]]
+    events_by_year: dict[int, dict[int, dict[int, List[EventNoAttendee]]]]
 
     class Config:
         from_attributes = True
