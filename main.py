@@ -7,6 +7,9 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from decouple import config
+from sqlalchemy.orm import Session
+from database import get_db
+from models import User
 
 # Configuration
 SECRET_KEY = config("SECRET_KEY", default="your_secret_key")
@@ -35,8 +38,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2 token scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# Mock database
-fake_users_db = {}
+
 
 # Utility functions
 def get_password_hash(password: str) -> str:
@@ -51,19 +53,24 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def authenticate_user(username: str, password: str):
-    user = fake_users_db.get(username)
-    if not user or not verify_password(password, user["password"]):
+def authenticate_user(username: str, password: str, db: Session) -> User | None:
+    # Query the database for the user
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not verify_password(password, user.hashed_password):
         return None
     return user
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        if username is None or username not in fake_users_db:
+        if username is None:
             raise HTTPException(status_code=401, detail="Invalid credentials")
-        return fake_users_db[username]
+        user = db.query(User).filter(User.username == username).first()
+        if user is None:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        return user
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -81,28 +88,40 @@ class Token(BaseModel):
 
 # Routes
 @app.post("/register", status_code=201)
-async def register(user: UserRegister):
-    if user.username in fake_users_db:
+async def register(user: UserRegister, db: Session = Depends(get_db)):
+    # Check if username already exists
+    existing_user = db.query(User).filter(User.username == user.username).first()
+    if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
+
+    # Hash the password and store the user in the database
     hashed_password = get_password_hash(user.password)
-    fake_users_db[user.username] = {"username": user.username, "password": hashed_password}
+    new_user = User(username=user.username, hashed_password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
     return {"message": "User registered successfully"}
 
 @app.post("/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.username, form_data.password)
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    access_token = create_access_token(data={"sub": form_data.username})
+
+    # Generate a JWT token
+    access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
+
 @app.get("/profile")
-async def profile(current_user: dict = Depends(get_current_user)):
-    return {"username": current_user["username"]}
+async def profile(current_user: User = Depends(get_current_user)):
+    return {"id": current_user.id, "username": current_user.username}
+
 
 @app.put("/update-profile")
-async def update_profile(update: UserUpdate, current_user: dict = Depends(get_current_user)):
+async def update_profile(update: UserUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if update.username:
-        fake_users_db[current_user["username"]]["username"] = update.username
-        current_user["username"] = update.username
+        current_user.username = update.username
+        db.commit()
+        db.refresh(current_user)
     return {"message": "Profile updated successfully"}
