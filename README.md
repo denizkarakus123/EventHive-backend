@@ -1,4 +1,4 @@
-# EventHive-backend
+# EventHive_backend
 
 ```pip install fastapi uvicorn bcrypt jwt python-decouple```
 
