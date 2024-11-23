@@ -25,8 +25,6 @@ class User(Base):
     ispublic = Column(Boolean, unique=False, index=False, nullable=True)
     event = Column(String, unique=False, index=False, nullable=True)
 
-    rsvp = relationship('Event', secondary='people_event', backref='people')
-
 
 class Organization(Base):
     __tablename__ = "organizations"
@@ -69,11 +67,14 @@ class Event(Base):
     link = Column(String, nullable=True)
 
 
-people_event = Table('people_event',
-                    Base.metadata,
-                    Column('user_id', Integer, ForeignKey('users.id')),
-                    Column('event_id', Integer, ForeignKey('events.id'))
-                    )
+class PeopleEvent(Base):
+    __tablename__ = "people_event"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    event_id = Column(Integer, ForeignKey("events.id"), primary_key=True)
+    
+    attendees = relationship('User', backref='events')
+    rsvp = relationship('Event', backref='attendees')
 
 Base.metadata.create_all(engine)
 

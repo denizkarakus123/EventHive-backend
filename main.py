@@ -8,8 +8,8 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from decouple import config
 from sqlalchemy.orm import Session
-from database import get_db, User
-from schemas import UserCreate, OrganizationCreate, OrganizationRead, EventCreate, EventRead, GroupedEventsResponse
+from database import get_db, User, PeopleEvent
+from schemas import UserCreate, OrganizationCreate, OrganizationRead, EventCreate, EventRead, GroupedEventsResponse, RSVPResponse
 from database import Event, Organization
 from collections import defaultdict
 
@@ -144,6 +144,50 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
+
+# Add RSVP to an event
+@app.post("/rsvp/{event_id}", response_model=RSVPResponse)
+def add_rsvp(event_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # Check if the event exists
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Check if the user is already RSVPed for the event
+    existing_rsvp = db.query(PeopleEvent).filter(PeopleEvent.user_id == user.id, PeopleEvent.event_id == event_id).first()
+    if existing_rsvp:
+        raise HTTPException(status_code=400, detail="User has already RSVPed to this event")
+
+    # Add the RSVP entry to the association table
+    try:
+        rsvp = PeopleEvent(user_id=user.id, event_id=event_id)
+        db.add(rsvp)
+        db.commit()
+
+        return RSVPResponse(user_id=user.id, event_id=event_id, status="RSVP added")
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to add RSVP")
+
+# Remove RSVP from an event
+@app.delete("/rsvp/{event_id}", response_model=RSVPResponse)
+def remove_rsvp(event_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # Check if the event exists
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Check if the user has RSVPed to the event
+    rsvp = db.query(PeopleEvent).filter(PeopleEvent.user_id == user.id, PeopleEvent.event_id == event_id).first()
+    if not rsvp:
+        raise HTTPException(status_code=400, detail="User has not RSVPed to this event")
+
+    # Remove the RSVP entry from the association table
+    db.delete(rsvp)
+    db.commit()
+
+    return RSVPResponse(user_id=user.id, event_id=event_id, status="RSVP removed")
+
 
 # List all events
 @app.get("/events/", response_model=list[EventRead])
