@@ -11,17 +11,24 @@ from datetime import datetime
 import base64
 import os
 from database import Organization
+import imapclient
+import pyzmail
 
 # OpenAI API Key
-openai.api_key = "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"
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+openai.api_key = "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"  # Replace with your OpenAI API key
+SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 CREDENTIALS_FILE = 'credentials.json'
 TOKEN_FILE = 'token.json'
 
+# IMAP Configuration
+IMAP_SERVER = "imap.gmail.com"
+EMAIL_ACCOUNT = "eventhive4@gmail.com"  # Replace with your email address
+EMAIL_PASSWORD = "okbx ikvp gtrk kbne"  # Replace with your email password or app password (for 2FA users)
+
+
 def get_credentials():
     """
-    Get credentials for Gmail API, refreshing them if needed.
-    If no valid credentials exist, initiate the OAuth flow.
+    Authenticate with Gmail API and return credentials.
     """
     if os.path.exists(TOKEN_FILE):
         creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
@@ -53,8 +60,11 @@ def get_credentials():
 
     return creds
 
+
 def get_email_content():
-    """Fetch email content using Gmail API."""
+    """
+    Fetch email content using Gmail API.
+    """
     creds = get_credentials()
     service = build('gmail', 'v1', credentials=creds)
 
@@ -80,8 +90,11 @@ def get_email_content():
             email_bodies.append(body)
     return email_bodies
 
+
 def parse_email_with_chatgpt(email_body):
-    """Parse email content into structured event details."""
+    """
+    Parse email content into structured event details.
+    """
     prompt = f"""
     You are an AI that parses email content into structured data for events.
     Extract the following fields from the provided email:
@@ -135,6 +148,7 @@ def parse_email_with_chatgpt(email_body):
     except Exception as e:
         print(f"Error with OpenAI API: {e}")
         return None
+
 
 def save_event_to_db(event_details):
     """Save the extracted event details to the database, preventing duplicates and managing organizations."""
@@ -234,16 +248,146 @@ def save_event_to_db(event_details):
         db.close()
 
 
-def process_multiple_emails():
-    """Fetch emails from Gmail and process them."""
-    email_bodies = get_email_content()
-    for email_body in email_bodies:
-        event_details = parse_email_with_chatgpt(email_body)
-        if event_details:
-            print("Extracted Event Details:", event_details)
-            save_event_to_db(event_details)
-        else:
-            print("Failed to parse email:", email_body)
+
+def process_old_emails():
+    """
+    Process all old emails using Gmail API and mark them as read after processing.
+    """
+    creds = get_credentials()
+    service = build('gmail', 'v1', credentials=creds)
+
+    # Get the list of emails
+    results = service.users().messages().list(userId='me', labelIds=['INBOX']).execute()
+    messages = results.get('messages', [])
+
+    for message in messages:
+        try:
+            # Fetch the email content
+            msg = service.users().messages().get(userId='me', id=message['id']).execute()
+            payload = msg['payload']
+            parts = payload.get("parts")
+            body = None
+
+            # Decode email content
+            if parts:
+                for part in parts:
+                    if part["mimeType"] == "text/plain":
+                        body = base64.urlsafe_b64decode(part["body"]["data"]).decode()
+                        break
+
+            if body:
+                event_details = parse_email_with_chatgpt(body)
+                if event_details:
+                    print("Extracted Event Details:", event_details)
+                    save_event_to_db(event_details)
+                else:
+                    print("Failed to parse email:", body)
+
+                # Mark the email as read
+                service.users().messages().modify(
+                    userId='me', id=message['id'], body={"removeLabelIds": ["UNREAD"]}
+                ).execute()
+
+        except Exception as e:
+            print(f"Error processing email ID {message['id']}: {e}")
+
+
+def process_recent_email():
+    """
+    Process only the most recent unread email using Gmail API.
+    """
+    creds = get_credentials()
+    service = build('gmail', 'v1', credentials=creds)
+
+    try:
+        # Fetch only the most recent unread email
+        results = service.users().messages().list(userId='me', labelIds=['INBOX'], q="is:unread", maxResults=1).execute()
+        messages = results.get('messages', [])
+
+        if not messages:
+            print("No unread emails to process.")
+            return
+
+        for message in messages:
+            try:
+                # Get the email details
+                msg = service.users().messages().get(userId='me', id=message['id']).execute()
+                payload = msg['payload']
+                parts = payload.get("parts")
+                body = None
+
+                # Decode email content
+                if parts:
+                    for part in parts:
+                        if part["mimeType"] == "text/plain":
+                            body = base64.urlsafe_b64decode(part["body"]["data"]).decode()
+                            break
+
+                if body:
+                    # Parse and save the email content
+                    event_details = parse_email_with_chatgpt(body)
+                    if event_details:
+                        print("Extracted Event Details:", event_details)
+                        save_event_to_db(event_details)
+                    else:
+                        print("Failed to parse email or no valid event found.")
+                
+                # Mark email as read after processing
+                service.users().messages().modify(userId='me', id=message['id'], body={"removeLabelIds": ["UNREAD"]}).execute()
+                print(f"Marked email ID {message['id']} as read.")
+            
+            except Exception as e:
+                print(f"Error processing email ID {message['id']}: {e}")
+
+    except Exception as e:
+        print(f"Error fetching or processing emails: {e}")
+
+def monitor_inbox():
+    """
+    Monitor the Gmail inbox for new emails using IMAP.
+    """
+    with imapclient.IMAPClient(IMAP_SERVER) as client:
+        try:
+            # Login to IMAP server
+            client.login(EMAIL_ACCOUNT, EMAIL_PASSWORD)
+            print("Logged into IMAP server.")
+        except Exception as e:
+            print(f"Failed to log in to IMAP server: {e}")
+            return
+
+        # Select the inbox
+        try:
+            client.select_folder("INBOX", readonly=False)
+        except Exception as e:
+            print(f"Failed to select INBOX folder: {e}")
+            return
+
+        while True:
+            try:
+                print("Waiting for new emails...")
+                client.idle()
+                responses = client.idle_check(timeout=60)  # Wait for 60 seconds
+
+                if responses:
+                    print("New email detected!")
+
+                    # Call the process_old_emails function after detecting new email(s)
+                    process_recent_email()
+
+                client.idle_done()
+            except Exception as e:
+                print(f"Error during IMAP idle: {e}")
+                client.idle_done()
+                break
+
+
+
 
 if __name__ == "__main__":
-    process_multiple_emails()
+    # Process older emails using Gmail API
+    print("Processing old emails...")
+    process_old_emails()
+
+    # Start monitoring for new emails using IMAP
+    print("Starting IMAP real-time monitoring...")
+    monitor_inbox()
