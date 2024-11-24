@@ -13,7 +13,7 @@ import os
 from database import Organization
 
 # OpenAI API Key
-openai.api_key = "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"
+openai.api_key = "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"
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 CREDENTIALS_FILE = 'credentials.json'
 TOKEN_FILE = 'token.json'
@@ -95,6 +95,8 @@ def parse_email_with_chatgpt(email_body):
     - Start Time
     - End Time
     - Event Category (one of these: Social, Academic, Sports, Club, Professional)
+    - Cost (integer, if mentioned; otherwise 0)
+    - Food (Yes/No if food is provided)
 
     If the email does not describe an event, set "is_an_event" to "No" and leave all other fields blank.
 
@@ -112,6 +114,8 @@ def parse_email_with_chatgpt(email_body):
     - start_time
     - end_time
     - category
+    - cost
+    - food
     """
 
     try:
@@ -203,6 +207,10 @@ def save_event_to_db(event_details):
         location = event_details.get("location") if event_details.get("is_in_person") == "Yes" else None
         link = event_details.get("link") if event_details.get("is_in_person") == "No" else None
 
+        # Parse food and cost details
+        food = event_details.get("food", "No") == "Yes"
+        cost = int(event_details.get("cost", 0))
+
         # Create a new Event instance
         new_event = Event(
             name=event_details.get("event_name"),
@@ -213,6 +221,8 @@ def save_event_to_db(event_details):
             end_date=end_datetime,
             description=f"Organized by {host_name}",
             category=event_details.get("category"),  # Add category
+            food=food,  # Add food information
+            cost=cost  # Add cost information
         )
         db.add(new_event)
         db.commit()
