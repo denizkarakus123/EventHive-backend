@@ -42,6 +42,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
 
+
 # Utility functions
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
@@ -59,9 +60,15 @@ def authenticate_user(username: str, password: str, db: Session) -> User | None:
     # Query the database for the user
     user = db.query(User).filter(User.username == username).first()
     if not user or not verify_password(password, user.hashed_password):
+def authenticate_user(username: str, password: str, db: Session) -> User | None:
+    # Query the database for the user
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not verify_password(password, user.hashed_password):
         return None
     return user
 
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
@@ -71,7 +78,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
             raise HTTPException(status_code=401, detail="Invalid credentials")
         user = db.query(User).filter(User.username == username).first()
         if user is None:
+        if username is None:
             raise HTTPException(status_code=401, detail="Invalid credentials")
+        user = db.query(User).filter(User.username == username).first()
+        if user is None:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        return user
         return user
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -97,10 +109,20 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     # Check if username already exists
     existing_user = db.query(User).filter(User.username == user.username).first()
     if existing_user:
+async def register(user: UserCreate, db: Session = Depends(get_db)):
+    # Check if username already exists
+    existing_user = db.query(User).filter(User.username == user.username).first()
+    if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
 
     # Hash the password and store the user in the database
+
+    # Hash the password and store the user in the database
     hashed_password = get_password_hash(user.password)
+    new_user = User(username=user.username, hashed_password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
     new_user = User(username=user.username, hashed_password=hashed_password)
     db.add(new_user)
     db.commit()
@@ -110,12 +132,18 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
 @app.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(form_data.username, form_data.password, db)
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     # Generate a JWT token
     access_token = create_access_token(data={"sub": user.username})
+
+    # Generate a JWT token
+    access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 
 @app.get("/profile")
