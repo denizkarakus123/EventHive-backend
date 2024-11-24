@@ -1,4 +1,5 @@
 USERNAMES = [
+    'hackstreet_boys_mcgill',
     'mcgill_ecsess',
     'ceusmcgill',
     'powe_mcgill',

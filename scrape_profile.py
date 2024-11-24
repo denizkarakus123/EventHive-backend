@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import datetime
 import os
+import shutil
 
 
 def validate_username(username: str, sf_api_key: str) -> Optional[str]:
@@ -163,3 +164,12 @@ def save_to_json_file(data: List[Dict[str, Any]], filename: str) -> None:
         print(f"Data successfully saved to {filename}")
     except Exception as e:
         print(f"Error saving data to {filename}: {e}")
+
+def move_json_file(src_path: str, dest_dir: str) -> None:
+    """Moves a file to the specified directory."""
+    try:
+        dest_path = os.path.join(dest_dir, os.path.basename(src_path))
+        shutil.move(src_path, dest_path)
+        print(f"File moved to {dest_path}")
+    except Exception as e:
+        print(f"Error moving file {src_path} to {dest_dir}: {e}")
