@@ -10,10 +10,10 @@ from dateutil.parser import parse as parse_date
 from datetime import datetime
 import base64
 import os
+from database import Organization
 
 # OpenAI API Key
-openai.api_key = "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"  # Replace with your OpenAI API key
-
+openai.api_key = "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"
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 CREDENTIALS_FILE = 'credentials.json'
 TOKEN_FILE = 'token.json'
@@ -133,7 +133,7 @@ def parse_email_with_chatgpt(email_body):
         return None
 
 def save_event_to_db(event_details):
-    """Save the extracted event details to the database, preventing duplicates."""
+    """Save the extracted event details to the database, preventing duplicates and managing organizations."""
     db: Session = SessionLocal()
 
     try:
@@ -141,6 +141,24 @@ def save_event_to_db(event_details):
             print("This email is not an event. Skipping...")
             return
 
+        # Check if the organization exists, create if not
+        host_name = event_details.get("host")
+        if not host_name:
+            print("No host provided for this event. Skipping...")
+            return
+
+        organization = db.query(Organization).filter(Organization.name.ilike(f"%{host_name}%")).first()
+        if not organization:
+            # Create a new organization
+            organization = Organization(name=host_name)
+            db.add(organization)
+            db.commit()
+            db.refresh(organization)
+            print(f"Created new organization: {organization.name}")
+
+        host_id = organization.id
+
+        # Parse the event date and times
         parsed_date = parse_date(event_details.get("date"))
         standardized_date = parsed_date.strftime("%Y-%m-%d")
 
@@ -151,7 +169,7 @@ def save_event_to_db(event_details):
             f"{standardized_date} {event_details.get('end_time')}", "%Y-%m-%d %I:%M %p"
         )
 
-        # Check for duplicate events (consider online and in-person separately)
+        # Check for duplicate events
         if event_details.get("is_in_person") == "Yes":
             # Check for duplicates for in-person events
             existing_event = (
@@ -160,6 +178,7 @@ def save_event_to_db(event_details):
                     Event.name.ilike(f"%{event_details.get('event_name')}%"),
                     Event.location.ilike(f"%{event_details.get('location')}%"),
                     Event.start_date == start_datetime,
+                    Event.host_id == host_id
                 )
                 .first()
             )
@@ -171,6 +190,7 @@ def save_event_to_db(event_details):
                     Event.name.ilike(f"%{event_details.get('event_name')}%"),
                     Event.link.ilike(f"%{event_details.get('link')}%"),
                     Event.start_date == start_datetime,
+                    Event.host_id == host_id
                 )
                 .first()
             )
@@ -183,14 +203,15 @@ def save_event_to_db(event_details):
         location = event_details.get("location") if event_details.get("is_in_person") == "Yes" else None
         link = event_details.get("link") if event_details.get("is_in_person") == "No" else None
 
-        # Create a new Event instance with category, location, and link
+        # Create a new Event instance
         new_event = Event(
             name=event_details.get("event_name"),
+            host_id=host_id,
             location=location,
             link=link,
             start_date=start_datetime,
             end_date=end_datetime,
-            description=f"Organized by {event_details.get('host')}",
+            description=f"Organized by {host_name}",
             category=event_details.get("category"),  # Add category
         )
         db.add(new_event)
@@ -201,6 +222,7 @@ def save_event_to_db(event_details):
         db.rollback()
     finally:
         db.close()
+
 
 def process_multiple_emails():
     """Fetch emails from Gmail and process them."""
