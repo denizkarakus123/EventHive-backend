@@ -5,7 +5,7 @@ from database import SessionLocal, Event
 from dateutil.parser import parse as parse_date
 from datetime import datetime
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 def extract_event_data(caption, image_description):
     # Use OpenAI's GPT API to extract event information from Instagram post data
@@ -141,17 +141,87 @@ def save_event_to_db(event_details):
     finally:
         db.close()  # Close the database session
 
-# Load JSON data
-json_file_path = "test_post_data/mcgill_ecsess_posts.json"  # Replace with your JSON file path
-with open(json_file_path, 'r') as json_file:
-    data = json.load(json_file)
+file_paths = [
+    "test_post_data/json_files/acecmcgill_posts.json",
+    "test_post_data/json_files/ahcssamcgill_posts.json",
+    "test_post_data/json_files/amnestymcgill_posts.json",
+    "test_post_data/json_files/ceusmcgill_posts.json",
+    "test_post_data/json_files/clashsa.mcgill_posts.json",
+    "test_post_data/json_files/desamcgill_posts.json",
+    "test_post_data/json_files/engineeringfrosh_posts.json",
+    "test_post_data/json_files/esamcgill_posts.json",
+    "test_post_data/json_files/genderequalitymcgill_posts.json",
+    "test_post_data/json_files/gertstilithurts_posts.json",
+    "test_post_data/json_files/girlswhocodemcgill_posts.json",
+    "test_post_data/json_files/gsfssamcgill_posts.json",
+    "test_post_data/json_files/hcsmcgill_posts.json",
+    "test_post_data/json_files/irsaminc_posts.json",
+    "test_post_data/json_files/isac_mcgill_posts.json",
+    "test_post_data/json_files/isp.mcgill_posts.json",
+    "test_post_data/json_files/lapsa.mcgill_posts.json",
+    "test_post_data/json_files/linguamcgill_posts.json",
+    "test_post_data/json_files/makeawishmcgill_posts.json",
+    "test_post_data/json_files/mame_mcgill_posts.json",
+    "test_post_data/json_files/mcgill_ecsess_posts.json",
+    "test_post_data/json_files/mcgill_mdvfs_posts.json",
+    "test_post_data/json_files/mcgill_rocket_team_posts.json",
+    "test_post_data/json_files/mcgill_rsus_posts.json",
+    "test_post_data/json_files/mcgill.asa_posts.json",
+    "test_post_data/json_files/mcgill.cssa_posts.json",
+    "test_post_data/json_files/mcgill.enggames_posts.json",
+    "test_post_data/json_files/mcgill.engineersinaction_posts.json",
+    "test_post_data/json_files/mcgill.mining_posts.json",
+    "test_post_data/json_files/mcgill.ucda_posts.json",
+    "test_post_data/json_files/mcgillarts_posts.json",
+    "test_post_data/json_files/mcgillartsoasis_posts.json",
+    "test_post_data/json_files/mcgillcampusstore_posts.json",
+    "test_post_data/json_files/mcgillcodejam_posts.json",
+    "test_post_data/json_files/mcgillconcretecanoe_posts.json",
+    "test_post_data/json_files/mcgillcss_posts.json",
+    "test_post_data/json_files/mcgillelate_posts.json",
+    "test_post_data/json_files/mcgilleng_posts.json",
+    "test_post_data/json_files/mcgillengine_posts.json",
+    "test_post_data/json_files/mcgilleus_posts.json",
+    "test_post_data/json_files/mcgillfamilymed_posts.json",
+    "test_post_data/json_files/mcgillmusiclibrary_posts.json",
+    "test_post_data/json_files/mcgillnourish_posts.json",
+    "test_post_data/json_files/mcgillrobotics_posts.json",
+    "test_post_data/json_files/mcgillscilearn_posts.json",
+    "test_post_data/json_files/mcgillstuserv_posts.json",
+    "test_post_data/json_files/mcgillsus_posts.json",
+    "test_post_data/json_files/mcgillu_posts.json",
+    "test_post_data/json_files/mec_mcgill_posts.json",
+    "test_post_data/json_files/mpsa.mcgill_posts.json",
+    "test_post_data/json_files/msert.mcgill_posts.json",
+    "test_post_data/json_files/nightlinemcgill_posts.json",
+    "test_post_data/json_files/nsbemcgill_posts.json",
+    "test_post_data/json_files/onthetablemag_posts.json",
+    "test_post_data/json_files/playerstheatremcgill_posts.json",
+    "test_post_data/json_files/powemcgill_posts.json",
+    "test_post_data/json_files/queermcgill_posts.json",
+    "test_post_data/json_files/russmcgill_posts.json",
+    "test_post_data/json_files/seam_mcgill_posts.json",
+    "test_post_data/json_files/ssa.mcgill_posts.json",
+    "test_post_data/json_files/ssmuaeum_posts.json",
+    "test_post_data/json_files/studentsinmind_posts.json",
+    "test_post_data/json_files/sumsmcgill_posts.json",
+    "test_post_data/json_files/susafterhours_posts.json",
+    "test_post_data/json_files/wiismcgill_posts.json",
+    "test_post_data/json_files/wimessamcgill_posts.json"
+]
 
-# Extract event data from each item in JSON and store results
-for item in data:
-    caption = item['description']
-    image_description = item.get('image_description', "")  # Assuming image description may or may not be provided
-    event_data = extract_event_data(caption, image_description)
-    if event_data:
-        save_event_to_db(event_data)
+
+# Load JSON data
+for json_file_path in file_paths:
+    with open(json_file_path, 'r') as json_file:
+        data = json.load(json_file)
+
+    # Extract event data from each item in JSON and store results
+    for item in data:
+        caption = item['description']
+        image_description = item.get('image_description', "")  # Assuming image description may or may not be provided
+        event_data = extract_event_data(caption, image_description)
+        if event_data:
+            save_event_to_db(event_data)
 
 print("Event data extraction and database saving completed.")
