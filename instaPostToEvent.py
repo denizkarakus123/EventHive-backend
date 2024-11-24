@@ -11,7 +11,7 @@ openai.api_key = "sk-proj-8ixdDO36g4NOOu1uvTcBfvfyIvJXwdbVXmBN8H1il4QZROm7yB52Nc
 
 
 def extract_event_data(caption, image_description):
-    # Use OpenAI's GPT API to extract event information from Instagram post data
+    # extract event information from instagram post data
     prompt = f"""
     The following is an Instagram post caption and image description for an event organized by a McGill University club. Extract the event details following the Event Schema below and output it strictly as a JSON object without any additional text or formatting.
 
@@ -35,7 +35,7 @@ def extract_event_data(caption, image_description):
     """
 
     try:
-        # Send the prompt to ChatGPT to get the structured response
+        # get the structured response
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -75,6 +75,7 @@ def save_event_to_db(event_details):
         if not day:
             print(f"Missing 'Day' field in event details: {event_details}")
             return
+
 
         # Parse and standardize the date and time
         try:
@@ -149,8 +150,8 @@ def save_event_to_db(event_details):
             end_date=end_datetime,
             description=event_details.get("Event description"),
             category=event_details.get("Event Category"),
-            cost=event_details.get("Cost") if "Cost" in event_details else 0,
-            food=event_details.get("Food") == "Yes" if "Food" in event_details else "No",
+            cost=event_details.get("Cost", 0),
+            food=True if event_details.get("Food") == True else False,
             location=event_details.get("Location"),
             link=event_details.get("Link") if "Link" in event_details else None,
         )
