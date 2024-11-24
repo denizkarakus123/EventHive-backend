@@ -6,7 +6,7 @@ from dateutil.parser import parse as parse_date
 from datetime import datetime
 from database import Organization
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 
 
@@ -149,8 +149,8 @@ def save_event_to_db(event_details):
             end_date=end_datetime,
             description=event_details.get("Event description"),
             category=event_details.get("Event Category"),
-            cost=event_details.get("Cost") if "Cost" in event_details else None,
-            food=event_details.get("Food") == "Yes" if "Food" in event_details else None,
+            cost=event_details.get("Cost") if "Cost" in event_details else 0,
+            food=event_details.get("Food") == "Yes" if "Food" in event_details else "No",
             location=event_details.get("Location"),
             link=event_details.get("Link") if "Link" in event_details else None,
         )
