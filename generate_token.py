@@ -5,7 +5,7 @@ import json
 import os
 
 # Define the scope for Gmail API
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 def get_credentials():
     """Get credentials for Gmail API, refreshing them if needed."""
