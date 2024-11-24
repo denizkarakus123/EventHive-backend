@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from decouple import config
 from sqlalchemy.orm import Session
 from database import get_db, User
-from schemas import UserCreate, OrganizationCreate, OrganizationRead, EventCreate, EventRead, GroupedEventsResponse
+from schemas import UserCreate, OrganizationCreate, OrganizationRead, EventCreate, EventRead, GroupedEventsResponse, UserResponse
 from database import Event, Organization
 from collections import defaultdict
 
@@ -313,6 +313,7 @@ async def cancel_rsvp(event_id: int, current_user: User = Depends(get_current_us
 async def get_rsvp_events(current_user: User = Depends(get_current_user)):
     # Retrieve all RSVPed events for the user
     return current_user.rsvp
+
 
 # List all events grouped by year, month, and day
 @app.get("/rsvpgrouped/", response_model=GroupedEventsResponse)
