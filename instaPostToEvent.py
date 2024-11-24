@@ -4,8 +4,11 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, Event
 from dateutil.parser import parse as parse_date
 from datetime import datetime
+from database import Organization
 
-openai.api_key = "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"
+openai.api_key = "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"
+
+
 
 def extract_event_data(caption, image_description):
     # Use OpenAI's GPT API to extract event information from Instagram post data
@@ -108,7 +111,22 @@ def save_event_to_db(event_details):
                 # Default to full day if time cannot be parsed
                 start_datetime = parsed_date
                 end_datetime = parsed_date
-        
+
+        # Get or create the organization
+        host_name = event_details.get("Host")
+        if not host_name:
+            print(f"Missing 'Host' field in event details: {event_details}")
+            return
+
+        # Check if the organization exists
+        organization = db.query(Organization).filter(Organization.name == host_name).first()
+        if not organization:
+            # Create a new organization if it doesn't exist
+            organization = Organization(name=host_name)
+            db.add(organization)
+            db.commit()  # Commit to get the organization ID
+            db.refresh(organization)
+
         # Check for duplicate events
         existing_event = (
             db.query(Event)
@@ -126,11 +144,17 @@ def save_event_to_db(event_details):
         # Create a new Event instance
         new_event = Event(
             name=event_details.get("Event name"),
-            location=event_details.get("Location"),
+            host_id=organization.id,  # Use the organization's ID as host_id
             start_date=start_datetime,
             end_date=end_datetime,
-            #description=event_details.get("Event description"),
-            category=event_details.get("Event Category"),        )
+            description=event_details.get("Event description"),
+            category=event_details.get("Event Category"),
+            cost=event_details.get("Cost") if "Cost" in event_details else None,
+            food=event_details.get("Food") == "Yes" if "Food" in event_details else None,
+            location=event_details.get("Location"),
+            link=event_details.get("Link") if "Link" in event_details else None,
+        )
+
         # Add and commit the new event
         db.add(new_event)
         db.commit()
@@ -140,6 +164,7 @@ def save_event_to_db(event_details):
         db.rollback()
     finally:
         db.close()  # Close the database session
+
 
 file_paths = [
     "test_post_data/json_files/acecmcgill_posts.json",
