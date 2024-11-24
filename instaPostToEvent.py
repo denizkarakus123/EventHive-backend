@@ -6,7 +6,7 @@ from dateutil.parser import parse as parse_date
 from datetime import datetime
 from database import Organization
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 
 
@@ -236,9 +236,11 @@ file_paths = [
     "test_post_data/json_files/wimessamcgill_posts.json"
 ]
 
+hackstreet = ['test_post_data/json_files/hackstreet_boys_mcgill_posts.json']
+
 
 # Load JSON data
-for json_file_path in file_paths:
+for json_file_path in hackstreet:
     with open(json_file_path, 'r') as json_file:
         data = json.load(json_file)
 

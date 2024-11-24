@@ -54,6 +54,16 @@ def parse_page_info(response_json: Dict[str, Any]) -> Dict[str, Union[Optional[b
 
 
 def parse_posts(response_json: Dict[str, Any], start_timestamp: int) -> List[Dict[str, Any]]:
+    """
+    Parses posts from the response JSON and filters them by a start timestamp.
+
+    Args:
+        response_json (Dict[str, Any]): The JSON response from Instagram.
+        start_timestamp (int): The minimum timestamp for filtering posts.
+
+    Returns:
+        List[Dict[str, Any]]: A list of posts created after the start timestamp.
+    """
     top_level_key = "graphql" if "graphql" in response_json else "data"
     user_data = response_json[top_level_key].get("user", {})
     post_edges = user_data.get("edge_owner_to_timeline_media", {}).get("edges", [])
@@ -62,7 +72,7 @@ def parse_posts(response_json: Dict[str, Any], start_timestamp: int) -> List[Dic
         post_json = node.get("node", {})
         timestamp = post_json.get("taken_at_timestamp")
 
-        # Skip posts before the start date
+        # Skip posts before the start date and time
         if timestamp <= start_timestamp:
             continue
 
@@ -80,7 +90,18 @@ def parse_posts(response_json: Dict[str, Any], start_timestamp: int) -> List[Dic
     return posts
 
 
-def scrape_ig_profile(username: str, sf_api_key: str, start_date: str) -> List[Dict[str, Any]]:
+def scrape_ig_profile(username: str, sf_api_key: str, start_datetime: str) -> List[Dict[str, Any]]:
+    """
+    Scrapes Instagram posts for a specific username and filters by a start datetime.
+
+    Args:
+        username (str): Instagram username.
+        sf_api_key (str): ScrapeFish API key.
+        start_datetime (str): The minimum datetime for filtering posts (format: YYYY-MM-DD HH:MM:SS).
+
+    Returns:
+        List[Dict[str, Any]]: A list of posts created after the start datetime.
+    """
     # Validate username
     user_id = validate_username(username, sf_api_key)
     if not user_id:
@@ -95,18 +116,8 @@ def scrape_ig_profile(username: str, sf_api_key: str, start_date: str) -> List[D
     posts_csv_path = os.path.join(data_dir, f"{username}_posts.csv")
     last_scraped_path = os.path.join(data_dir, f"{username}_last_scraped.json")
 
-    # Convert start_date to a timestamp
-    start_timestamp = int(datetime.datetime.strptime(start_date, "%Y-%m-%d").timestamp())
-
-    # Load the last scraped timestamp from a file if available
-    if os.path.exists(last_scraped_path):
-        with open(last_scraped_path, "r") as file:
-            last_scraped = int(datetime.datetime.strptime(json.load(file)["last_scraped"], "%Y-%m-%d %H:%M:%S").timestamp())
-        print(f"Last scraped date: {datetime.datetime.utcfromtimestamp(last_scraped)}")
-        # Use the later of the last scraped timestamp or the start timestamp
-        start_timestamp = max(start_timestamp, last_scraped)
-    else:
-        print(f"No last scraped date found. Using start_date: {start_date}")
+    # Convert start_datetime to a timestamp
+    start_timestamp = int(datetime.datetime.strptime(start_datetime, "%Y-%m-%d %H:%M:%S").timestamp())
 
     # Fetch posts
     params = {
@@ -144,24 +155,38 @@ def scrape_ig_profile(username: str, sf_api_key: str, start_date: str) -> List[D
             json.dump({"last_scraped": datetime.datetime.utcfromtimestamp(new_last_scraped).strftime("%Y-%m-%d %H:%M:%S")}, file)
         print(f"Updated last scraped date: {datetime.datetime.utcfromtimestamp(new_last_scraped)}")
 
-    df = pd.DataFrame(posts)
-    df.to_csv(posts_csv_path, index=False)
-    print(f"Data successfully saved to {posts_csv_path}")
-
     return posts
 
 
 def save_to_json_file(data: List[Dict[str, Any]], filename: str) -> None:
-    """Saves a list of dictionaries to a JSON file."""
+    """
+    Saves a list of dictionaries to a JSON file, appending new data if the file already exists.
+
+    Args:
+        data (List[Dict[str, Any]]): List of posts to save.
+        filename (str): Path to the JSON file.
+    """
     try:
         if os.path.exists(filename):
-            # Append to existing JSON file
+            # Load the existing JSON data
             with open(filename, "r") as json_file:
                 existing_data = json.load(json_file)
-            data = existing_data + data
+
+            # Avoid duplicate entries by checking unique identifiers (e.g., 'shortcode')
+            existing_shortcodes = {post['shortcode'] for post in existing_data}
+            new_data = [post for post in data if post['shortcode'] not in existing_shortcodes]
+
+            # Append new posts to existing data
+            updated_data = existing_data + new_data
+        else:
+            # If the file doesn't exist, initialize with the new data
+            updated_data = data
+
+        # Write the updated data back to the file
         with open(filename, "w") as json_file:
-            json.dump(data, json_file, indent=4)
-        print(f"Data successfully saved to {filename}")
+            json.dump(updated_data, json_file, indent=4)
+
+        print(f"Data successfully saved to {filename}. Total posts: {len(updated_data)}")
     except Exception as e:
         print(f"Error saving data to {filename}: {e}")
 
